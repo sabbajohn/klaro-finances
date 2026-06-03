@@ -1,4 +1,4 @@
-# Klaro
+# Klaro Finance
 
 Aplicacao Vue + Express preparada para deploy unico no Coolify.
 
@@ -29,13 +29,16 @@ Em producao, o Express serve os arquivos de `dist` e responde tambem pelas rotas
 
 ## Deploy no Coolify
 
-Use o diretório [`app`](/Users/johnsabba/Documents/Codex/2026-06-02/figma-plugin-figma-openai-curated-wireframe/app) como raiz do projeto no serviço.
+Use o diretório `klaro-finances` como raiz do projeto no serviço.
 
 ### Opcao recomendada: Dockerfile
 
 - Build pack: `Dockerfile`
 - Port: `3000`
 - Health check: `/api/health`
+- Publish directory: nao usar
+- Build command: nao usar
+- Start command: nao usar
 
 Variaveis de ambiente:
 
@@ -51,3 +54,4 @@ Persistencia:
 
 - Sem volume persistente, o SQLite reinicia a cada novo deploy.
 - O cookie de sessao usa `secure` em producao; rode atras de HTTPS, que e o padrao no Coolify.
+- Se o deploy estiver em branco, confirme que o Coolify esta usando o `Dockerfile` desta pasta e nao o modo Nixpacks/Node.
