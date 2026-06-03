@@ -42,6 +42,7 @@ app.use(express.json())
 app.use(
   session({
     secret: SESSION_SECRET,
+    proxy: true,
     resave: false,
     saveUninitialized: false,
     store: new FileStore({
@@ -51,7 +52,7 @@ app.use(
     cookie: {
       httpOnly: true,
       sameSite: 'lax',
-      secure: IS_PROD,
+      secure: IS_PROD ? 'auto' : false,
       maxAge: 1000 * 60 * 60 * 12,
     },
   }),
