@@ -31,27 +31,40 @@ Em producao, o Express serve os arquivos de `dist` e responde tambem pelas rotas
 
 Use o diretório `klaro-finances` como raiz do projeto no serviço.
 
-### Opcao recomendada: Dockerfile
+### Opcao recomendada: Docker Compose
 
-- Build pack: `Dockerfile`
-- Port: `3000`
-- Health check: `/api/health`
-- Publish directory: nao usar
-- Build command: nao usar
-- Start command: nao usar
+Arquitetura:
+
+- `web`: Nginx servindo o frontend em `80`
+- `api`: Node/Express servindo a API em `3000` na rede interna
+
+Arquivos:
+
+- `docker-compose.yml`
+- `Dockerfile.nginx`
+- `Dockerfile.api`
+- `nginx/default.conf`
+
+No Coolify:
+
+- Build pack: `Docker Compose`
+- Compose file: `docker-compose.yml`
+- Service publicado: `web`
+- Port: `80`
+- Health check: `/healthz`
 
 Variaveis de ambiente:
 
-- `PORT=3000`
 - `SESSION_SECRET=<segredo-forte>`
+- `PORT=3000` para a API
 - `DATA_DIR=/app/data`
 
 Persistencia:
 
-- Monte um volume em `/app/data`
+- Monte um volume em `/app/data` no service `api`
 
 ### Observacoes
 
 - Sem volume persistente, o SQLite reinicia a cada novo deploy.
 - O cookie de sessao usa `secure` em producao; rode atras de HTTPS, que e o padrao no Coolify.
-- Se o deploy estiver em branco, confirme que o Coolify esta usando o `Dockerfile` desta pasta e nao o modo Nixpacks/Node.
+- Se o deploy estiver em branco, confirme que o Coolify esta publicando o service `web` e nao o `api`.
