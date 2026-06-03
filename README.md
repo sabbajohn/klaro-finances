@@ -52,6 +52,7 @@ No Coolify:
 - Service publicado: `web`
 - Port: `80`
 - Health check: `/healthz`
+- Sem `ports` binding no compose; o Coolify publica o service diretamente
 
 Variaveis de ambiente:
 
