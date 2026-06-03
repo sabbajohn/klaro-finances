@@ -19,8 +19,8 @@ services:
       dockerfile: Dockerfile.nginx
     depends_on:
       - api
-    ports:
-      - "80:80"
+    expose:
+      - "80"
     restart: unless-stopped
 
 volumes:
