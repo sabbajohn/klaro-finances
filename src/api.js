@@ -41,6 +41,12 @@ export function createExpense(payload) {
   })
 }
 
+export function deleteExpense(expenseId) {
+  return request(`/api/expenses/${expenseId}`, {
+    method: 'DELETE',
+  })
+}
+
 export function createIncome(payload) {
   return request('/api/incomes', {
     method: 'POST',

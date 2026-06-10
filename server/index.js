@@ -8,6 +8,7 @@ import {
   createIncome,
   createExpense,
   createGoal,
+  deleteExpense,
   getSummary,
   getUserSettings,
   getUserByCredentials,
@@ -151,6 +152,30 @@ app.post('/api/expenses', ensureAuth, (req, res) => {
 
   res.status(201).json({
     expense,
+    expenses: listExpenses(req.session.userId),
+    incomes: listIncomes(req.session.userId),
+    goals: listGoals(req.session.userId),
+    settings: getUserSettings(req.session.userId),
+    summary: getSummary(req.session.userId),
+  })
+})
+
+app.delete('/api/expenses/:expenseId', ensureAuth, (req, res) => {
+  const expenseId = Number(req.params.expenseId)
+
+  if (!Number.isInteger(expenseId) || expenseId <= 0) {
+    res.status(400).json({ message: 'Despesa inválida.' })
+    return
+  }
+
+  const deleted = deleteExpense(req.session.userId, expenseId)
+
+  if (!deleted) {
+    res.status(404).json({ message: 'Despesa não encontrada.' })
+    return
+  }
+
+  res.json({
     expenses: listExpenses(req.session.userId),
     incomes: listIncomes(req.session.userId),
     goals: listGoals(req.session.userId),

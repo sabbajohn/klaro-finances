@@ -246,6 +246,17 @@ export function createExpense(userId, payload) {
     .get(result.lastInsertRowid)
 }
 
+export function deleteExpense(userId, expenseId) {
+  const result = db
+    .prepare(`
+      DELETE FROM expenses
+      WHERE id = ? AND user_id = ?
+    `)
+    .run(expenseId, userId)
+
+  return result.changes > 0
+}
+
 export function listIncomes(userId) {
   return db
     .prepare(`
