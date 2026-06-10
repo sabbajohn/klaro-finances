@@ -1014,7 +1014,7 @@ h2,
   transform: translateX(-50%);
   z-index: 7;
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 2px;
   width: var(--app-width);
   height: 96px;
@@ -1023,6 +1023,58 @@ h2,
   background: rgba(255, 255, 255, 0.96);
   backdrop-filter: blur(16px);
   box-shadow: 0 -8px 24px rgba(20, 20, 20, 0.08);
+}
+
+.period-filter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0 6px;
+}
+
+.period-filter .period-label {
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.period-filter .period-controls {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex: 0 0 auto;
+}
+
+.period-filter input[type="date"] {
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: #fff;
+  width: 150px;
+  box-sizing: border-box;
+}
+
+.period-filter .secondary-button {
+  padding: 8px 12px;
+  border-radius: 999px;
+}
+
+
+.back-to-top {
+  position: fixed;
+  right: 18px;
+  bottom: calc(112px + env(safe-area-inset-bottom, 0px));
+  z-index: 9;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: var(--ink);
+  color: #fff;
+  box-shadow: 0 12px 32px rgba(0,0,0,0.16);
+  border: none;
+  cursor: pointer;
 }
 
 .bottom-item {

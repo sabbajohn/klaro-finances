@@ -6,6 +6,7 @@ import {
   Bell,
   Check,
   ChevronDown,
+  ChevronUp,
   ChevronRight,
   CreditCard,
   Home,
@@ -154,6 +155,11 @@ function navigateToProfileSection(targetId) {
   if (section) section.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
+function scrollToTopProfile() {
+  const scroller = document.querySelector('.screen-scroll')
+  if (scroller) scroller.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
 const profileSections = computed(() => [
   {
     title: 'Preferencias',
@@ -171,10 +177,21 @@ const profileSections = computed(() => [
   },
 ])
 
+const dateRange = reactive({
+  from: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10),
+  to: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().slice(0, 10),
+})
+
 const groupedExpenses = computed(() => {
   const groups = new Map()
 
-  sessionState.expenses.forEach((expense, index) => {
+  const expenses = sessionState.expenses.filter((expense) => {
+    if (!expense?.spentOn) return false
+    if (!dateRange.from || !dateRange.to) return true
+    return expense.spentOn >= dateRange.from && expense.spentOn <= dateRange.to
+  })
+
+  expenses.forEach((expense, index) => {
     const label = groupLabel(expense.spentOn)
     const rows = groups.get(label) ?? []
 
@@ -540,6 +557,14 @@ onBeforeUnmount(() => {
               </div>
             </header>
 
+            <div class="period-filter">
+              <div class="period-controls">
+                <input type="date" v-model="dateRange.from" />
+                <input type="date" v-model="dateRange.to" />
+                <button class="secondary-button" type="button" @click="dateRange.from = ''; dateRange.to = ''">Limpar</button>
+              </div>
+            </div>
+
             <div v-if="deleteAlert" class="delete-alert" role="alert">
               {{ deleteAlert }}
             </div>
@@ -880,6 +905,16 @@ onBeforeUnmount(() => {
           @click="openExpenseSheet"
         >
           <Plus :size="38" :stroke-width="1.8" />
+        </button>
+
+        <button
+          v-if="activeTab === 'perfil'"
+          class="back-to-top"
+          type="button"
+          aria-label="Voltar ao topo"
+          @click="scrollToTopProfile"
+        >
+          <ChevronUp :size="20" :stroke-width="2" />
         </button>
 
         <footer class="bottom-nav">
