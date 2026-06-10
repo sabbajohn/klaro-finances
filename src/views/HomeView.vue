@@ -55,6 +55,7 @@ const settingsError = ref('')
 const settingsSuccess = ref('')
 const goalError = ref('')
 const goalSuccess = ref('')
+const showScrollToTop = ref(false)
 const today = new Date().toISOString().slice(0, 10)
 
 const form = reactive({
@@ -158,6 +159,13 @@ function navigateToProfileSection(targetId) {
 function scrollToTopProfile() {
   const scroller = document.querySelector('.screen-scroll')
   if (scroller) scroller.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
+function handleScroll() {
+  const scroller = document.querySelector('.screen-scroll')
+  if (scroller) {
+    showScrollToTop.value = scroller.scrollTop > 0
+  }
 }
 
 const profileSections = computed(() => [
@@ -489,10 +497,18 @@ function handleDocumentClick(event) {
 
 onMounted(() => {
   document.addEventListener('click', handleDocumentClick)
+  const scroller = document.querySelector('.screen-scroll')
+  if (scroller) {
+    scroller.addEventListener('scroll', handleScroll)
+  }
 })
 
 onBeforeUnmount(() => {
   document.removeEventListener('click', handleDocumentClick)
+  const scroller = document.querySelector('.screen-scroll')
+  if (scroller) {
+    scroller.removeEventListener('scroll', handleScroll)
+  }
 })
 </script>
 
@@ -908,7 +924,7 @@ onBeforeUnmount(() => {
         </button>
 
         <button
-          v-if="activeTab === 'perfil'"
+          v-if="activeTab === 'perfil' && showScrollToTop"
           class="back-to-top"
           type="button"
           aria-label="Voltar ao topo"

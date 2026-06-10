@@ -353,7 +353,8 @@ h2,
 }
 
 .screen-scroll {
-  min-height: 100dvh;
+  height: 100dvh;
+  overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: #b7b7bc transparent;
   padding: 28px 22px calc(126px + env(safe-area-inset-bottom, 0px));
@@ -1075,6 +1076,8 @@ h2,
   box-shadow: 0 12px 32px rgba(0,0,0,0.16);
   border: none;
   cursor: pointer;
+  transition: opacity 0.3s ease-in-out;
+  opacity: 1;
 }
 
 .bottom-item {
