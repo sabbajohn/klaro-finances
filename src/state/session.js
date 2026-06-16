@@ -89,6 +89,16 @@ export async function addExpense(payload) {
   return response.expense
 }
 
+export async function deleteExpense(expenseId) {
+  const response = await api.deleteExpense(expenseId)
+  sessionState.expenses = response.expenses
+  sessionState.incomes = response.incomes
+  sessionState.goals = response.goals
+  sessionState.settings = response.settings
+  sessionState.summary = response.summary
+  return response
+}
+
 export async function addIncome(payload) {
   const response = await api.createIncome(payload)
   sessionState.expenses = response.expenses

@@ -1,11 +1,12 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   Bot,
   Bell,
   Check,
   ChevronDown,
+  ChevronUp,
   ChevronRight,
   CreditCard,
   Home,
@@ -15,6 +16,7 @@ import {
   Shield,
   Sparkles,
   Target,
+  Trash2,
   User,
   Wallet,
   X,
@@ -23,6 +25,7 @@ import {
   addExpense,
   addGoal,
   addIncome,
+  deleteExpense,
   saveSettings,
   sessionState,
   signOut,
@@ -40,6 +43,10 @@ const savingIncome = ref(false)
 const savingSettings = ref(false)
 const savingGoal = ref(false)
 const updatingGoalId = ref(null)
+const deletingExpenseId = ref(null)
+const showDeleteModal = ref(false)
+const pendingDeleteExpense = ref(null)
+const deleteAlert = ref('')
 const expenseError = ref('')
 const expenseSuccess = ref('')
 const incomeError = ref('')
@@ -48,6 +55,7 @@ const settingsError = ref('')
 const settingsSuccess = ref('')
 const goalError = ref('')
 const goalSuccess = ref('')
+const showScrollToTop = ref(false)
 const today = new Date().toISOString().slice(0, 10)
 
 const form = reactive({
@@ -96,7 +104,7 @@ const expenseTypeOptions = [
 const navItems = [
   { key: 'home', label: 'Home', icon: Home },
   { key: 'gastos', label: 'Gastos', icon: List },
-  { key: 'dividas', label: 'Dívidas', icon: CreditCard },
+  //{ key: 'a_pagar', label: 'A Pagar', icon: CreditCard },
   { key: 'ia', label: 'IA', icon: Bot },
   { key: 'perfil', label: 'Perfil', icon: User },
 ]
@@ -128,12 +136,37 @@ const assistantInsight = computed(() => {
 
 const profileMetrics = computed(() => {
   return [
-    { label: 'orcamento alvo', value: money(monthlyBudget.value) },
-    { label: 'total gasto', value: money(sessionState.summary.totalSpent) },
-    { label: 'entradas', value: money(sessionState.summary.totalIncome) },
-    { label: 'metas concluidas', value: `${sessionState.summary.completedGoalCount}/${sessionState.summary.goalCount}` },
+    { label: 'orçamento alvo', value: money(monthlyBudget.value), target: 'profile-budget' },
+    { label: 'entradas', value: money(sessionState.summary.totalIncome), target: 'profile-incomes' },
+    { label: 'metas concluídas', value: `${sessionState.summary.completedGoalCount}/${sessionState.summary.goalCount}`, target: 'profile-goals' },
   ]
 })
+
+function navigateToProfileSection(targetId) {
+  if (activeTab.value !== 'perfil') {
+    activeTab.value = 'perfil'
+    nextTick(() => {
+      const section = document.getElementById(targetId)
+      if (section) section.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+    return
+  }
+
+  const section = document.getElementById(targetId)
+  if (section) section.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
+
+function scrollToTopProfile() {
+  const scroller = document.querySelector('.screen-scroll')
+  if (scroller) scroller.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
+function handleScroll() {
+  const scroller = document.querySelector('.screen-scroll')
+  if (scroller) {
+    showScrollToTop.value = scroller.scrollTop > 0
+  }
+}
 
 const profileSections = computed(() => [
   {
@@ -152,10 +185,21 @@ const profileSections = computed(() => [
   },
 ])
 
+const dateRange = reactive({
+  from: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10),
+  to: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().slice(0, 10),
+})
+
 const groupedExpenses = computed(() => {
   const groups = new Map()
 
-  sessionState.expenses.forEach((expense, index) => {
+  const expenses = sessionState.expenses.filter((expense) => {
+    if (!expense?.spentOn) return false
+    if (!dateRange.from || !dateRange.to) return true
+    return expense.spentOn >= dateRange.from && expense.spentOn <= dateRange.to
+  })
+
+  expenses.forEach((expense, index) => {
     const label = groupLabel(expense.spentOn)
     const rows = groups.get(label) ?? []
 
@@ -199,6 +243,53 @@ async function submitExpense() {
     expenseError.value = error.message
   } finally {
     savingExpense.value = false
+  }
+}
+
+async function removeExpense(expenseId) {
+  expenseError.value = ''
+  expenseSuccess.value = ''
+  deletingExpenseId.value = expenseId
+
+  try {
+    await deleteExpense(expenseId)
+    expenseSuccess.value = 'Despesa excluída.'
+    return true
+  } catch (error) {
+    expenseError.value = error.message
+    return false
+  } finally {
+    deletingExpenseId.value = null
+  }
+}
+
+function openDeleteModal(expense) {
+  pendingDeleteExpense.value = expense
+  showDeleteModal.value = true
+}
+
+function closeDeleteModal() {
+  showDeleteModal.value = false
+  pendingDeleteExpense.value = null
+}
+
+async function confirmDeleteExpense() {
+  if (!pendingDeleteExpense.value) {
+    return
+  }
+
+  console.log('Confirmando exclusão da despesa', pendingDeleteExpense.value.id)
+  showDeleteModal.value = false
+
+  const deleted = await removeExpense(pendingDeleteExpense.value.id)
+  pendingDeleteExpense.value = null
+
+  if (deleted) {
+    window.alert('Despesa excluída.')
+    deleteAlert.value = 'Despesa excluída.'
+    setTimeout(() => {
+      deleteAlert.value = ''
+    }, 3200)
   }
 }
 
@@ -406,10 +497,18 @@ function handleDocumentClick(event) {
 
 onMounted(() => {
   document.addEventListener('click', handleDocumentClick)
+  const scroller = document.querySelector('.screen-scroll')
+  if (scroller) {
+    scroller.addEventListener('scroll', handleScroll)
+  }
 })
 
 onBeforeUnmount(() => {
   document.removeEventListener('click', handleDocumentClick)
+  const scroller = document.querySelector('.screen-scroll')
+  if (scroller) {
+    scroller.removeEventListener('scroll', handleScroll)
+  }
 })
 </script>
 
@@ -474,6 +573,39 @@ onBeforeUnmount(() => {
               </div>
             </header>
 
+            <div class="period-filter">
+              <div class="period-controls">
+                <input type="date" v-model="dateRange.from" />
+                <input type="date" v-model="dateRange.to" />
+                <button class="secondary-button" type="button" @click="dateRange.from = ''; dateRange.to = ''">Limpar</button>
+              </div>
+            </div>
+
+            <div v-if="deleteAlert" class="delete-alert" role="alert">
+              {{ deleteAlert }}
+            </div>
+
+            <div v-if="showDeleteModal" class="modal-overlay" @click.self="closeDeleteModal">
+              <div class="delete-modal">
+                <div class="delete-modal-head">
+                  <Trash2 :size="24" :stroke-width="2" />
+                  <div>
+                    <h3>Confirmar exclusão</h3>
+                    <p>Você tem certeza de que deseja excluir esta despesa?</p>
+                  </div>
+                </div>
+
+                <div class="delete-modal-actions">
+                  <button class="secondary-button" type="button" @click="closeDeleteModal">
+                    Cancelar
+                  </button>
+                  <button class="primary-button" type="button" @click="confirmDeleteExpense">
+                    Sim, excluir
+                  </button>
+                </div>
+              </div>
+            </div>
+
             <div class="expense-groups">
               <section v-for="group in groupedExpenses" :key="group.label" class="expense-group">
                 <h2>{{ group.label }}</h2>
@@ -494,6 +626,15 @@ onBeforeUnmount(() => {
                   <div class="expense-side">
                     <strong>-{{ money(expense.amount) }}</strong>
                     <span>{{ expense.time }}</span>
+                    <button
+                      class="expense-delete-button"
+                      type="button"
+                      @click.stop="openDeleteModal(expense)"
+                      :disabled="deletingExpenseId === expense.id"
+                      aria-label="Excluir despesa"
+                    >
+                      <Trash2 :size="18" :stroke-width="2" />
+                    </button>
                   </div>
                 </article>
               </section>
@@ -501,7 +642,7 @@ onBeforeUnmount(() => {
           </section>
 
           <section v-else-if="activeTab === 'dividas'" class="view-shell">
-            <header class="view-header">
+            <!---<header class="view-header">
               <p class="view-kicker">compromissos</p>
               <h1>Dívidas</h1>
             </header>
@@ -513,7 +654,7 @@ onBeforeUnmount(() => {
                 <p>Vencimento em {{ debt.due }}</p>
               </div>
               <strong>{{ money(debt.amount) }}</strong>
-            </article>
+            </article>-->
           </section>
 
           <section v-else-if="activeTab === 'ia'" class="view-shell">
@@ -553,13 +694,22 @@ onBeforeUnmount(() => {
             </article>
 
             <section class="profile-metrics">
-              <article v-for="metric in profileMetrics" :key="metric.label" class="profile-metric-card">
-                <span>{{ metric.label }}</span>
-                <strong>{{ metric.value }}</strong>
-              </article>
+              <button
+                v-for="metric in profileMetrics"
+                :key="metric.label"
+                class="profile-metric-card"
+                type="button"
+                @click="navigateToProfileSection(metric.target)"
+              >
+                <div class="profile-metric-copy">
+                  <span>{{ metric.label }}</span>
+                  <strong>{{ metric.value }}</strong>
+                </div>
+                <ChevronRight :size="18" :stroke-width="2" />
+              </button>
             </section>
 
-            <section class="soft-card profile-section-card">
+            <section id="profile-goals" class="soft-card profile-section-card">
               <div class="profile-section-head">
                 <h2>Metas</h2>
                 <button
@@ -645,7 +795,7 @@ onBeforeUnmount(() => {
               </div>
             </section>
 
-            <section class="soft-card profile-section-card">
+            <section id="profile-budget" class="soft-card profile-section-card">
               <div class="profile-section-head">
                 <h2>Orçamento mensal</h2>
               </div>
@@ -671,7 +821,7 @@ onBeforeUnmount(() => {
               </form>
             </section>
 
-            <section class="soft-card profile-section-card">
+            <section id="profile-incomes" class="soft-card profile-section-card">
               <div class="profile-section-head">
                 <h2>Entradas</h2>
                 <button
@@ -771,6 +921,16 @@ onBeforeUnmount(() => {
           @click="openExpenseSheet"
         >
           <Plus :size="38" :stroke-width="1.8" />
+        </button>
+
+        <button
+          v-if="activeTab === 'perfil' && showScrollToTop"
+          class="back-to-top"
+          type="button"
+          aria-label="Voltar ao topo"
+          @click="scrollToTopProfile"
+        >
+          <ChevronUp :size="20" :stroke-width="2" />
         </button>
 
         <footer class="bottom-nav">
