@@ -73,132 +73,45 @@ if (!expenseColumns.some((column) => column.name === 'recurring')) {
   db.exec('ALTER TABLE expenses ADD COLUMN recurring INTEGER NOT NULL DEFAULT 0')
 }
 
-const seedUser = db
-  .prepare('INSERT OR IGNORE INTO users (name, email, pin) VALUES (?, ?, ?)')
-  .run('Lara Menezes', 'demo@klaro.app', '1234')
+const demoUsers = [
+  {
+    name: 'Demo 1',
+    email: 'demo1@klaro.app',
+    pin: '1234',
+  },
+  {
+    name: 'Demo 2',
+    email: 'demo2@klaro.app',
+    pin: '1234',
+  },
+  {
+    name: 'Demo 3',
+    email: 'demo3@klaro.app',
+    pin: '1234',
+  },
+]
 
-const user = db
-  .prepare('SELECT id, name, email FROM users WHERE email = ?')
-  .get('demo@klaro.app')
-
-const expenseCount = db
-  .prepare('SELECT COUNT(*) AS total FROM expenses WHERE user_id = ?')
-  .get(user.id)
-
-db.prepare(`
-  INSERT OR IGNORE INTO user_settings (user_id, monthly_budget)
+const seedUser = db.prepare(`
+  INSERT INTO users (name, email, pin)
+  VALUES (@name, @email, @pin)
+  ON CONFLICT(email) DO UPDATE SET
+    name = excluded.name,
+    pin = excluded.pin
+`)
+const findUserByEmail = db.prepare('SELECT id FROM users WHERE email = ?')
+const seedUserSettings = db.prepare(`
+  INSERT INTO user_settings (user_id, monthly_budget)
   VALUES (?, ?)
-`).run(user.id, 3200)
-
-if (!expenseCount.total) {
-  const insertExpense = db.prepare(`
-    INSERT INTO expenses (user_id, title, amount, category, spent_on, recurring, notes)
-    VALUES (@user_id, @title, @amount, @category, @spent_on, @recurring, @notes)
-  `)
-
-  const seedExpenses = [
-    {
-      user_id: user.id,
-      title: 'Mercado Extra',
-      amount: 87.3,
-      category: 'Alimentação',
-      spent_on: '2026-06-02',
-      recurring: 0,
-      notes: 'Compra do dia',
-    },
-    {
-      user_id: user.id,
-      title: 'Uber',
-      amount: 18.9,
-      category: 'Transporte',
-      spent_on: '2026-06-02',
-      recurring: 0,
-      notes: 'Corrida curta',
-    },
-    {
-      user_id: user.id,
-      title: 'Farmácia Nissei',
-      amount: 42.5,
-      category: 'Saúde',
-      spent_on: '2026-06-01',
-      recurring: 1,
-      notes: 'Medicamentos',
-    },
-    {
-      user_id: user.id,
-      title: 'iFood',
-      amount: 34.5,
-      category: 'Alimentação',
-      spent_on: '2026-06-01',
-      recurring: 0,
-      notes: 'Jantar',
-    },
-    {
-      user_id: user.id,
-      title: 'Passagem Metrô',
-      amount: 4.4,
-      category: 'Transporte',
-      spent_on: '2026-01-13',
-      recurring: 1,
-      notes: 'Deslocamento',
-    },
-    {
-      user_id: user.id,
-      title: 'Natura',
-      amount: 89.9,
-      category: 'Pessoal',
-      spent_on: '2026-01-13',
-      recurring: 0,
-      notes: 'Compra pessoal',
-    },
-  ]
-
-  const insertMany = db.transaction((rows) => {
-    for (const row of rows) {
-      insertExpense.run(row)
-    }
-  })
-
-  insertMany(seedExpenses)
-}
-
-const incomeCount = db
-  .prepare('SELECT COUNT(*) AS total FROM incomes WHERE user_id = ?')
-  .get(user.id)
-
-if (!incomeCount.total) {
-  const insertIncome = db.prepare(`
-    INSERT INTO incomes (user_id, title, amount, received_on, notes)
-    VALUES (@user_id, @title, @amount, @received_on, @notes)
-  `)
-
-  insertIncome.run({
-    user_id: user.id,
-    title: 'Salário principal',
-    amount: 5400,
-    received_on: '2026-06-01',
-    notes: 'Entrada mensal',
-  })
-
-  insertIncome.run({
-    user_id: user.id,
-    title: 'Freela',
-    amount: 850,
-    received_on: '2026-06-02',
-    notes: 'Projeto entregue',
-  })
-}
-
-const goalCount = db
-  .prepare('SELECT COUNT(*) AS total FROM goals WHERE user_id = ?')
-  .get(user.id)
-
-if (!goalCount.total) {
-  db.prepare(`
-    INSERT INTO goals (user_id, title, target_amount, current_amount, due_date, status)
-    VALUES (?, ?, ?, ?, ?, ?)
-  `).run(user.id, 'Reserva de emergência', 3000, 1250, '2026-07-31', 'active')
-}
+  ON CONFLICT(user_id) DO NOTHING
+`)
+const seedDemoUsers = db.transaction((rows) => {
+  for (const row of rows) {
+    seedUser.run(row)
+    const user = findUserByEmail.get(row.email)
+    seedUserSettings.run(user.id, 3200)
+  }
+})
+seedDemoUsers(demoUsers)
 
 export function getUserByCredentials(email, pin) {
   return db
@@ -389,13 +302,15 @@ export function updateGoal(userId, goalId, payload) {
 }
 
 export function getUserSettings(userId) {
-  return db
+  const settings = db
     .prepare(`
       SELECT monthly_budget AS monthlyBudget
       FROM user_settings
       WHERE user_id = ?
     `)
     .get(userId)
+
+  return settings ?? { monthlyBudget: 3200 }
 }
 
 export function updateUserSettings(userId, payload) {
@@ -418,7 +333,7 @@ export function getSummary(userId) {
       SELECT
         COUNT(*) AS expenseCount,
         ROUND(COALESCE(SUM(amount), 0), 2) AS totalSpent,
-        SUM(CASE WHEN recurring = 1 THEN 1 ELSE 0 END) AS recurringExpenseCount
+        COALESCE(SUM(CASE WHEN recurring = 1 THEN 1 ELSE 0 END), 0) AS recurringExpenseCount
       FROM expenses
       WHERE user_id = ?
     `)
@@ -459,7 +374,7 @@ export function getSummary(userId) {
     .prepare(`
       SELECT
         COUNT(*) AS goalCount,
-        SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) AS completedGoalCount
+        COALESCE(SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END), 0) AS completedGoalCount
       FROM goals
       WHERE user_id = ?
     `)

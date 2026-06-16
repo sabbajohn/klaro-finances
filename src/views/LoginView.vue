@@ -5,7 +5,7 @@ import { signIn, sessionState } from '../state/session'
 
 const router = useRouter()
 const form = reactive({
-  email: 'demo@klaro.app',
+  email: 'demo1@klaro.app',
   pin: '1234',
 })
 const errorMessage = ref('')
@@ -60,7 +60,8 @@ async function submit() {
         </label>
 
         <p class="helper-copy">
-          Credenciais demo: <strong>demo@klaro.app</strong> e <strong>1234</strong>.
+          Credenciais demo: <strong>demo1@klaro.app</strong>, <strong>demo2@klaro.app</strong>
+          ou <strong>demo3@klaro.app</strong> com PIN <strong>1234</strong>.
         </p>
 
         <p v-if="errorMessage" class="feedback feedback-danger">
